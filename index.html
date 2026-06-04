@@ -4773,7 +4773,8 @@ button.tap-feedback-active,
 <div class="toast" id="toast"></div>
 <script>
 (() => {
-  const KEY = 'portfolio_vercel_v114';
+  const KEY = 'portfolio_vercel_main';
+  const LEGACY_KEYS = ['portfolio_vercel_main','portfolio_vercel_v115','portfolio_vercel_v113','portfolio_vercel_v112','portfolio_vercel_v115','portfolio_vercel_v110','portfolio_vercel_v109','portfolio_vercel_v108','portfolio_vercel_v107','portfolio_vercel_v106','portfolio_vercel_v105','portfolio_vercel_v104','portfolio_vercel_v103','portfolio_vercel_v102','portfolio_vercel_v101','portfolio_vercel_v100','portfolio_vercel_v99','portfolio_vercel_v98','portfolio_vercel_v97','portfolio_vercel_v96','portfolio_vercel_v95','portfolio_vercel_v94','portfolio_vercel_v93','portfolio_vercel_v92','portfolio_vercel_v91','portfolio_vercel_v90','portfolio_vercel_v89','portfolio_vercel_v88','portfolio_vercel_v87','portfolio_vercel_v86','portfolio_vercel_v85','portfolio_vercel_v84','portfolio_vercel_v83','portfolio_vercel_v82','portfolio_vercel_v81','portfolio_vercel_v80','portfolio_vercel_v79','portfolio_vercel_v78','portfolio_vercel_v77','portfolio_vercel_v76','portfolio_vercel_v75','portfolio_vercel_v74','portfolio_vercel_v73','portfolio_vercel_v72','portfolio_vercel_v71','portfolio_vercel_v70','portfolio_vercel_v69','portfolio_vercel_v68','portfolio_vercel_v67','portfolio_vercel_v66','portfolio_vercel_v65','portfolio_vercel_v64','portfolio_vercel_v63','portfolio_vercel_v62','portfolio_vercel_v61','portfolio_vercel_v60','portfolio_vercel_v59','portfolio_vercel_v58','portfolio_vercel_v57','portfolio_vercel_v56','portfolio_vercel_v55','portfolio_vercel_v54','portfolio_vercel_v53','portfolio_vercel_v52','portfolio_vercel_v51','portfolio_vercel_v50','portfolio_vercel_v49','portfolio_vercel_v48','portfolio_vercel_v47','portfolio_vercel_v46','portfolio_vercel_v45','portfolio_vercel_v44','portfolio_vercel_v43','portfolio_vercel_v42','portfolio_vercel_v41','portfolio_vercel_v40','portfolio_vercel_v39','portfolio_vercel_v38','portfolio_vercel_v37','portfolio_vercel_v36'];
   const colors = ['#4d7cff','#8d7dff','#22c55e','#f3b13f','#ff5c73','#38bdf8','#ec4899','#84cc16','#64748b','#f97316','#06b6d4'];
   const defaults = [
     {id:'datacenter',group:'국내 ETF',market:'kr',name:'TIGER 미국AI데이터센터TOP4Plus',short:'데이터센터',code:'0142D0',qty:222,avg:8531,price:14480,monthly:100000,buyText:'13,500원 이하 분할매수 / 12,000원 이하 적극매수',rule:p=>p<=12000?['적극매수','buy','12,000원 이하 적극매수 구간 단, 과집중은 피하기']:p<=13500?['분할매수','buy','13,500원 이하 분할매수 가능 구간']:['보유','hold','수익권 유지 급하게 추격매수하지 않기']},
@@ -5100,11 +5101,49 @@ button.tap-feedback-active,
   }
 
   function cloneDefaults(){ return defaults.map(x => ({...x})); }
+  function portfolioDataScoreV115(data){
+    if(!Array.isArray(data)) return -1;
+    return data.reduce((score, x) => {
+      const qty = Number(x && x.qty || 0);
+      const avg = Number(x && x.avg || 0);
+      const price = Number(x && x.price || 0);
+      const monthly = Number(x && x.monthly || 0);
+      return score + (qty > 0 ? 1000 : 0) + (avg > 0 ? 200 : 0) + (price > 0 ? 100 : 0) + (monthly > 0 ? 50 : 0);
+    }, data.length);
+  }
+
+  function findBestSavedPortfolioV115(){
+    let best = null;
+    let bestKey = '';
+    let bestScore = -1;
+
+    const keys = Array.from(new Set(LEGACY_KEYS || [KEY]));
+    keys.forEach(k => {
+      try{
+        const data = JSON.parse(localStorage.getItem(k) || 'null');
+        const score = portfolioDataScoreV115(data);
+        if(score > bestScore){
+          best = data;
+          bestKey = k;
+          bestScore = score;
+        }
+      }catch(e){}
+    });
+
+    return {data:best, key:bestKey, score:bestScore};
+  }
+
   function load(){
     try{
-      const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      const found = findBestSavedPortfolioV115();
+      const saved = Array.isArray(found.data) && found.score > 0 ? found.data : null;
       const base = cloneDefaults();
-      if(!saved) return base;
+
+      if(!saved){
+        localStorage.setItem(KEY, JSON.stringify(base));
+        return base;
+      }
+
       saved.forEach(s => {
         const t = base.find(x => x.id === s.id);
         if(t){
@@ -5115,459 +5154,26 @@ button.tap-feedback-active,
             monthly:+s.monthly || 0,
             lastUpdated:s.lastUpdated || ''
           });
-        }else if(s && s.id && s.name){
+        }else if(s && s.id){
           base.push({
-            id:s.id, group:s.group || '국내주식', market:s.market || 'kr',
-            name:s.name, short:s.short || String(s.name).slice(0,2), code:s.code || '',
-            qty:+s.qty || 0, avg:+s.avg || 0, price:+s.price || 0, monthly:+s.monthly || 0,
-            buyText:s.buyText || '신규 편입 / 기준가 확인 필요',
-            lastUpdated:s.lastUpdated || '',
-            rule:()=>['신규편입','hold','신규 편입 종목입니다 가격 기준을 확인하세요']
+            ...s,
+            qty:+s.qty || 0,
+            avg:+s.avg || 0,
+            price:+s.price || 0,
+            monthly:+s.monthly || 0
           });
         }
       });
+
+      localStorage.setItem(KEY, JSON.stringify(base));
+      if(found.key && found.key !== KEY){
+        setTimeout(() => toast('기존 저장 데이터 복구 완료'), 600);
+      }
       return base;
-    }catch(e){ return cloneDefaults(); }
-  }
-  function persist(){
-    localStorage.setItem(KEY, JSON.stringify(items.map(x => ({
-      id:x.id, group:x.group, market:x.market, name:x.name, short:x.short, code:x.code,
-      qty:x.qty, avg:x.avg, price:x.price, monthly:x.monthly,
-      buyText:x.buyText, lastUpdated:x.lastUpdated||''
-    }))));
-  }
-  const won = n => Math.round(n||0).toLocaleString('ko-KR') + '원';
-  const pct = n => (Number.isFinite(n)?n:0).toFixed(2) + '%';
-  const num = n => Number(n||0).toLocaleString('ko-KR',{maximumFractionDigits:4});
-  function stamp(){
-    const d = new Date();
-    const mm = String(d.getMonth()+1).padStart(2,'0');
-    const dd = String(d.getDate()).padStart(2,'0');
-    const hh = String(d.getHours()).padStart(2,'0');
-    const mi = String(d.getMinutes()).padStart(2,'0');
-    return `${mm}/${dd} ${hh}:${mi}`;
-  }
-  function analyze(item){
-    const [label,status,action] = item.rule(item.price);
-    return {label,status,action};
-  }
-  function enrich(){
-    items.forEach(x => {
-      // OCR이 1,304,200원을 1.304200처럼 읽어 평단이 0.0229로 저장된 경우 자동 보정
-      if(x.market === 'kr' && x.price > 1000 && x.avg > 0 && x.avg < 100){
-        if(x.avg < 1) x.avg = x.avg * 1000000;
-        else x.avg = x.avg * 1000;
-      }
-      x.cost = x.qty * x.avg;
-      x.value = x.qty * x.price;
-      x.profit = x.value - x.cost;
-      x.rate = x.cost ? x.profit / x.cost * 100 : 0;
-      const a = analyze(x);
-      x.signal = a.label;
-      x.status = a.status;
-      x.action = a.action;
-    });
-  }
-  function makeOneLine(){
-    const mvl = items.find(x => x.id === 'mvl');
-    const core = items.filter(x => ['sp500','nasdaq100'].includes(x.id)).reduce((a,x)=>a+(x.monthly||0),0);
-    if(mvl && mvl.price >= 2.7) return 'MVL 반등 구간 진입<br>일부 정리 기준 확인 후 핵심 ETF 적립 유지';
-    if(core > 0) return '핵심은 S&P500·나스닥100 월 적립 유지<br>개별주는 가격 기준 도달 시에만 분할';
-    return '신규 매수보다 보유 종목 가격 기준을 먼저 확인';
-  }
-  function recalc(){
-    enrich();
-    const totalCost = items.reduce((a,x)=>a+x.cost,0);
-    const totalValue = items.reduce((a,x)=>a+x.value,0);
-    const monthly = items.reduce((a,x)=>a+(x.monthly||0),0);
-    const profit = totalValue - totalCost;
-    const rate = totalCost ? profit / totalCost * 100 : 0;
-    el('totalValue').textContent = won(totalValue);
-    el('totalCost').textContent = won(totalCost);
-    el('monthly').textContent = won(monthly);
-    el('assetCount').textContent = items.length + '개';
-    el('buyCount').textContent = items.filter(x => x.status === 'buy').length + '개';
-    const pnl = el('totalPnl');
-    pnl.textContent = `${won(profit)} (${pct(rate)})`;
-    pnl.className = 'pnl ' + (profit >= 0 ? 'pos' : 'neg');
-    el('oneLine').innerHTML = makeOneLine();
-    renderMonthlyPlan();
-    renderAssets(totalValue);
-    renderAlloc(totalValue);
-    renderAi();
-    renderRadar();
-    renderBuySignalCards();
-    renderStockWeights(totalValue);
-    renderRebalance();
-    if(currentId){
-      const item = items.find(x => x.id === currentId);
-      if(item && el('detailModal').classList.contains('active')) fillDetail(item);
+    }catch(e){
+      return cloneDefaults();
     }
   }
-
-  
-  function getAiBuyPlanForRadar(item){
-    const high = radarCalcHigh(item);
-    const price = radarCalcPrice(item);
-    const baseBudget = 300000;
-    const watchPrice = high ? high * 0.90 : 0;
-    const splitPrice = high ? high * 0.85 : 0;
-    const strongPrice = high ? high * 0.80 : 0;
-    const st = radarStatus(item);
-    let stage = '대기';
-    let first = 0, second = 0, third = 0;
-    if(st.status === 'watch'){
-      stage = '관심';
-      first = Math.round(baseBudget * 0.3);
-      second = Math.round(baseBudget * 0.4);
-      third = Math.round(baseBudget * 0.3);
-    }else if(st.status === 'buy'){
-      stage = '분할매수';
-      first = Math.round(baseBudget * 0.4);
-      second = Math.round(baseBudget * 0.35);
-      third = Math.round(baseBudget * 0.25);
-    }else if(st.status === 'strong'){
-      stage = '적극매수';
-      first = Math.round(baseBudget * 0.5);
-      second = Math.round(baseBudget * 0.3);
-      third = Math.round(baseBudget * 0.2);
-    }
-    return {stage, watchPrice, splitPrice, strongPrice, first, second, third, current:price, status:st.status, label:st.label, drop:st.drop};
-  }
-  function getAiBuyPlanForItem(item){
-    const monthly = Number(item.monthly || 0);
-    const budget = monthly || 100000;
-    const p = Number(item.price || 0);
-    const avg = Number(item.avg || 0);
-    const target1 = p ? p * 0.97 : avg * 0.97;
-    const target2 = p ? p * 0.94 : avg * 0.94;
-    const target3 = p ? p * 0.90 : avg * 0.90;
-    let first = Math.round(budget * 0.4);
-    let second = Math.round(budget * 0.35);
-    let third = Math.round(budget * 0.25);
-    return {target1, target2, target3, first, second, third};
-  }
-  function renderBuySignalCards(){
-    const box = document.getElementById('buySignalList');
-    if(!box) return;
-    const radarSignals = radarItems
-      .map(x => ({...x, ...radarStatus(x)}))
-      .filter(x => ['watch','buy','strong'].includes(x.status))
-      .sort((a,b) => a.drop - b.drop)
-      .slice(0, 20);
-
-    const itemSignals = items
-      .filter(x => x.status === 'buy')
-      .slice(0,3)
-      .map(x => ({...x, signalType:'holding'}));
-
-    const signals = [
-      ...radarSignals.map(x => ({...x, signalType:'radar'})),
-      ...itemSignals
-    ].slice(0, 20);
-
-    if(!signals.length){
-      box.innerHTML = '<div class="empty-state">현재 매수 신호 종목이 없습니다<br>가격/고점 갱신 후 다시 확인해보세요</div>';
-      return;
-    }
-
-    box.innerHTML = signals.map(x => {
-      if(x.signalType === 'radar'){
-        const plan = getAiBuyPlanForRadar(x);
-        return `<div class="buy-signal-card">
-          <div class="buy-signal-top">
-            <div class="buy-signal-name">${x.name}</div>
-            <span class="buy-signal-label ${x.status}">${x.label}</span>
-          </div>
-          <div class="buy-signal-grid">
-            <div class="buy-signal-mini"><span>추천매수가</span><b>${x.market === 'us' ? '$' + num(plan.recommendedPrice) : won(plan.recommendedPrice)}</b></div>
-            <div class="buy-signal-mini"><span>1차 매수</span><b>${won(plan.first)}</b></div>
-            <div class="buy-signal-mini"><span>충분도</span><b>${plan.score}점</b></div>
-          </div>
-        </div>`;
-      }
-      const plan = getAiBuyPlanForItem(x);
-      return `<div class="buy-signal-card">
-        <div class="buy-signal-top">
-          <div class="buy-signal-name">${x.name}</div>
-          <span class="buy-signal-label buy">보유매수</span>
-        </div>
-        <div class="buy-signal-grid">
-          <div class="buy-signal-mini"><span>추천매수가</span><b>${won(plan.target1)}</b></div>
-          <div class="buy-signal-mini"><span>1차 매수</span><b>${won(plan.first)}</b></div>
-          <div class="buy-signal-mini"><span>월 계획</span><b>${won(x.monthly)}</b></div>
-        </div>
-      </div>`;
-    }).join('');
-  }
-  function renderStockWeights(total){
-    const list = document.getElementById('stockWeightList');
-    if(!list) return;
-    const rows = [...items].sort((a,b) => b.value - a.value).slice(0,10);
-    list.innerHTML = rows.map(x => {
-      const w = total ? x.value / total * 100 : 0;
-      return `<div class="stock-weight-row">
-        <div>
-          <div class="stock-weight-name">${x.name}</div>
-          <div class="stock-weight-sub">${x.group} · ${won(x.value)}</div>
-        </div>
-        <div class="stock-weight-pct">${pct(w)}</div>
-        <div class="stock-weight-bar"><span style="width:${Math.max(3,w).toFixed(1)}%"></span></div>
-      </div>`;
-    }).join('');
-  }
-
-
-
-  let monthlyEditingIdV111 = null;
-
-  function parseWonInputV111(value){
-    const raw = String(value || '').replace(/[^\d]/g, '');
-    if(!raw) return 0;
-    return Math.max(0, Number(raw) || 0);
-  }
-
-  const MONTHLY_AI_BUDGET_KEY_V114 = 'portfolio_monthly_ai_budget_v114';
-
-  function getMonthlyBudgetV114(){
-    const saved = Number(localStorage.getItem(MONTHLY_AI_BUDGET_KEY_V114) || 0);
-    if(saved > 0) return saved;
-    const current = items.reduce((a,x) => a + Number(x.monthly || 0), 0);
-    return current > 0 ? current : 1500000;
-  }
-
-  function getMonthlyTargetWeightV114(item, budget){
-    const targetMap = typeof rebalanceTargets !== 'undefined' && rebalanceTargets.stock ? rebalanceTargets.stock : {};
-    if(targetMap[item.name] !== undefined) return targetMap[item.name];
-
-    if(item.group && /ETF/.test(item.group)) return 12;
-    if(item.status === 'buy') return 8;
-    if(item.status === 'hold') return 6;
-    if(item.status === 'watch') return 4;
-    return 5;
-  }
-
-  function distributeMonthlyBudgetV114(budget){
-    const activeItems = items.filter(x => x.status !== 'reduce' && x.status !== 'warn');
-    if(!activeItems.length) return [];
-
-    const totalValue = items.reduce((a,x) => a + (x.value || 0), 0);
-    const scored = activeItems.map(x => {
-      const currentWeight = totalValue ? (x.value || 0) / totalValue * 100 : 0;
-      const targetWeight = getMonthlyTargetWeightV114(x, budget);
-      const underWeight = Math.max(0, targetWeight - currentWeight);
-      let score = underWeight;
-
-      if(x.status === 'buy') score += 3;
-      if(x.status === 'hold') score += 1.5;
-      if(x.group && /ETF/.test(x.group)) score += 1.2;
-      if(score <= 0) score = 0.8;
-
-      return { item:x, score };
-    });
-
-    const totalScore = scored.reduce((a,x) => a + x.score, 0) || 1;
-    let rows = scored.map(x => ({
-      item:x.item,
-      amount:Math.round((budget * x.score / totalScore) / 10000) * 10000
-    }));
-
-    let diff = budget - rows.reduce((a,x) => a + x.amount, 0);
-    rows.sort((a,b) => b.amount - a.amount);
-
-    let guard = 0;
-    while(Math.abs(diff) >= 10000 && rows.length && guard < 1000){
-      for(const row of rows){
-        if(Math.abs(diff) < 10000) break;
-        if(diff > 0){
-          row.amount += 10000;
-          diff -= 10000;
-        }else if(row.amount >= 10000){
-          row.amount -= 10000;
-          diff += 10000;
-        }
-      }
-      guard++;
-    }
-
-    return rows.filter(x => x.amount > 0);
-  }
-
-  function openMonthlyBudgetSheetV114(){
-    const sheet = document.getElementById('monthlyBudgetSheet');
-    const bg = document.getElementById('monthlyBudgetBackdrop');
-    const input = document.getElementById('monthlyBudgetInput');
-    if(!sheet || !bg || !input) return;
-
-    input.value = getMonthlyBudgetV114().toLocaleString('ko-KR');
-    bg.classList.add('active');
-    sheet.classList.add('active');
-
-    setTimeout(() => {
-      input.focus();
-      input.select();
-    }, 120);
-  }
-
-  function closeMonthlyBudgetSheetV114(){
-    document.getElementById('monthlyBudgetSheet')?.classList.remove('active');
-    document.getElementById('monthlyBudgetBackdrop')?.classList.remove('active');
-  }
-
-  function applyMonthlyBudgetV114(){
-    const input = document.getElementById('monthlyBudgetInput');
-    const budget = parseWonInputV111(input && input.value);
-    if(budget <= 0){
-      toast('월 총 투자금액을 입력해주세요');
-      return;
-    }
-
-    localStorage.setItem(MONTHLY_AI_BUDGET_KEY_V114, String(budget));
-
-    const rows = distributeMonthlyBudgetV114(budget);
-    const rowMap = new Map(rows.map(r => [r.item.id, r.amount]));
-
-    items.forEach(item => {
-      const amount = rowMap.get(item.id) || 0;
-      item.monthly = amount;
-      if(amount <= 0) setMonthlyDone(item.id, false);
-    });
-
-    persist();
-    closeMonthlyBudgetSheetV114();
-    recalc();
-
-    const total = rows.reduce((a,x) => a + x.amount, 0);
-    toast(`월 매수계획 ${won(total)} 반영 완료`);
-  }
-
-  function startMonthlyEditV111(id){
-    monthlyEditingIdV111 = id;
-    renderMonthlyPlan();
-    setTimeout(() => {
-      const input = document.querySelector(`[data-monthly-edit-input="${id}"]`);
-      if(input){
-        input.focus();
-        input.select();
-      }
-    }, 50);
-  }
-
-  function cancelMonthlyEditV111(){
-    monthlyEditingIdV111 = null;
-    renderMonthlyPlan();
-  }
-
-  function saveMonthlyEditV111(id){
-    const input = document.querySelector(`[data-monthly-edit-input="${id}"]`);
-    const item = items.find(x => x.id === id);
-    if(!input || !item) return;
-    const amount = parseWonInputV111(input.value);
-    item.monthly = amount;
-    monthlyEditingIdV111 = null;
-    if(amount <= 0) setMonthlyDone(id, false);
-    persist();
-    recalc();
-    toast(amount > 0 ? `${item.name} 월 매수금액 ${won(amount)} 저장` : `${item.name} 월 매수계획 제외`);
-  }
-
-
-function getMonthlyDone(){
-    try{
-      return JSON.parse(localStorage.getItem('portfolio_monthly_done_v39') || '{}') || {};
-    }catch(e){ return {}; }
-  }
-  function setMonthlyDone(id, checked){
-    const done = getMonthlyDone();
-    if(checked) done[id] = true;
-    else delete done[id];
-    localStorage.setItem('portfolio_monthly_done_v39', JSON.stringify(done));
-  }
-  function resetMonthlyDone(){
-    localStorage.removeItem('portfolio_monthly_done_v39');
-    renderMonthlyPlan();
-    toast('월 매수 체크 초기화 완료');
-  }
-  function renderMonthlyPlan(){
-    const list = document.getElementById('buyPlanList');
-    const totalEl = document.getElementById('buyPlanTotal');
-    if(!list || !totalEl) return;
-    const done = getMonthlyDone();
-    const plans = items.filter(x => (x.monthly || 0) > 0).sort((a,b) => b.monthly - a.monthly);
-    const total = plans.reduce((a,x) => a + (x.monthly || 0), 0);
-    const doneTotal = plans.filter(x => done[x.id]).reduce((a,x) => a + (x.monthly || 0), 0);
-    totalEl.textContent = `${won(doneTotal)} / ${won(total)}`;
-    if(!plans.length){
-      list.innerHTML = '<div class="empty-state">월 매수 계획이 없습니다<br>종목 화면에서 월 매수금액을 입력하면 여기에 표시됩니다</div>';
-      return;
-    }
-    list.innerHTML = plans.map(x => {
-      const share = total ? (x.monthly / total * 100) : 0;
-      const checked = !!done[x.id];
-      const editing = monthlyEditingIdV111 === x.id;
-      return `<div class="buy-plan-row ${checked ? 'done' : ''}" data-plan-id="${x.id}">
-        <div class="buy-plan-top">
-          <input class="buy-check" type="checkbox" data-plan-check="${x.id}" ${checked ? 'checked' : ''} aria-label="${x.name} 매수 완료">
-          <div>
-            <div class="buy-plan-name">${x.name}</div>
-            <div class="buy-plan-sub">${x.group} · 월 비중 ${pct(share)}</div>
-            ${checked ? '<div class="buy-plan-done-label">체크됨</div>' : ''}
-          </div>
-          <div class="buy-plan-actions">
-            <div class="buy-plan-amt ${editing ? 'editing' : ''}">${won(x.monthly)}</div>
-            ${editing ? `
-              <input class="monthly-edit-input" data-monthly-edit-input="${x.id}" inputmode="numeric" value="${Math.round(x.monthly || 0).toLocaleString('ko-KR')}" aria-label="${x.name} 월 매수금액">
-              <button class="buy-plan-save-btn" data-monthly-save="${x.id}" type="button">저장</button>
-              <button class="buy-plan-cancel-btn" data-monthly-cancel type="button">취소</button>
-            ` : `<button class="buy-plan-edit-btn" data-monthly-edit="${x.id}" type="button">수정</button>`}
-          </div>
-        </div>
-        <div class="buy-plan-bar"><span style="width:${Math.max(3, share).toFixed(2)}%"></span></div>
-      </div>`;
-    }).join('');
-
-    list.querySelectorAll('[data-plan-check]').forEach(chk => {
-      chk.addEventListener('change', e => {
-        const id = e.target.getAttribute('data-plan-check');
-        setMonthlyDone(id, e.target.checked);
-        renderMonthlyPlan();
-      });
-    });
-
-    list.querySelectorAll('[data-monthly-edit]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        startMonthlyEditV111(btn.getAttribute('data-monthly-edit'));
-      });
-    });
-
-    list.querySelectorAll('[data-monthly-save]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        saveMonthlyEditV111(btn.getAttribute('data-monthly-save'));
-      });
-    });
-
-    list.querySelectorAll('[data-monthly-cancel]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        cancelMonthlyEditV111();
-      });
-    });
-
-    list.querySelectorAll('[data-monthly-edit-input]').forEach(input => {
-      input.addEventListener('keydown', e => {
-        if(e.key === 'Enter') saveMonthlyEditV111(input.getAttribute('data-monthly-edit-input'));
-        if(e.key === 'Escape') cancelMonthlyEditV111();
-      });
-      input.addEventListener('input', e => {
-        const n = parseWonInputV111(e.target.value);
-        e.target.value = n ? n.toLocaleString('ko-KR') : '';
-      });
-    });
-  }
-
-
 
   const US_FX_RATE = 1350;
   function radarCalcPrice(item){
