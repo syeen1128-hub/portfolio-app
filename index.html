@@ -4232,56 +4232,108 @@ button.tap-feedback-active,
 }
 
 
-/* --- Monthly AI add/delete v112 --- */
-.monthly-add-panel{
-  margin:12px 0 10px;
-  padding:12px;
-  border-radius:20px;
-  background:rgba(255,255,255,.045);
-  border:1px solid rgba(124,160,255,.18);
-  display:grid;
-  grid-template-columns:1fr 120px auto auto;
-  gap:8px;
-  align-items:center;
+/* --- Monthly AI budget sheet from v111 v114 --- */
+.monthly-budget-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.50);
+  opacity:0;
+  pointer-events:none;
+  transition:.18s ease;
+  z-index:9997;
 }
-.monthly-add-select{
-  height:40px;
-  border-radius:14px;
-  border:1px solid rgba(124,160,255,.28);
+.monthly-budget-backdrop.active{
+  opacity:1;
+  pointer-events:auto;
+}
+.monthly-budget-sheet{
+  position:fixed;
+  left:14px;
+  right:14px;
+  bottom:calc(92px + env(safe-area-inset-bottom));
+  max-width:620px;
+  margin:0 auto;
+  padding:18px;
+  border-radius:28px;
+  background:linear-gradient(180deg,rgba(18,36,67,.98),rgba(7,18,34,.98));
+  border:1px solid rgba(124,160,255,.24);
+  box-shadow:0 24px 70px rgba(0,0,0,.48);
+  transform:translateY(24px) scale(.98);
+  opacity:0;
+  pointer-events:none;
+  transition:.2s ease;
+  z-index:9998;
+}
+.monthly-budget-sheet.active{
+  transform:translateY(0) scale(1);
+  opacity:1;
+  pointer-events:auto;
+}
+.monthly-budget-handle{
+  width:44px;
+  height:5px;
+  border-radius:999px;
+  background:rgba(255,255,255,.18);
+  margin:0 auto 14px;
+}
+.monthly-budget-title{
+  color:#fff;
+  font-size:21px;
+  font-weight:1000;
+}
+.monthly-budget-sub{
+  margin-top:6px;
+  color:#9fb0c8;
+  font-size:13px;
+  font-weight:850;
+  line-height:1.45;
+}
+.monthly-budget-label{
+  display:block;
+  margin-top:16px;
+  color:#dbeafe;
+  font-size:13px;
+  font-weight:1000;
+}
+.monthly-budget-input{
+  width:100%;
+  height:54px;
+  margin-top:8px;
+  padding:0 14px;
+  border-radius:18px;
+  border:1px solid rgba(124,160,255,.38);
   background:rgba(3,10,20,.70);
   color:#fff;
-  padding:0 10px;
-  font-size:13px;
-  font-weight:900;
+  font-size:24px;
+  font-weight:1000;
   outline:none;
+  box-sizing:border-box;
 }
-.buy-plan-delete-btn{
-  min-height:34px;
-  padding:0 11px;
-  border-radius:13px;
-  border:1px solid rgba(255,92,122,.26);
-  background:rgba(255,92,122,.11);
-  color:#ffb8c4;
-  font-size:12px;
+.monthly-budget-input:focus{
+  border-color:rgba(151,174,255,.9);
+  box-shadow:0 0 0 3px rgba(91,124,255,.18);
+}
+.monthly-budget-actions{
+  display:flex;
+  gap:8px;
+  margin-top:14px;
+}
+.monthly-budget-cancel,
+.monthly-budget-apply{
+  flex:1;
+  height:48px;
+  border-radius:16px;
+  border:1px solid rgba(255,255,255,.10);
+  color:#fff;
+  font-size:14px;
   font-weight:1000;
 }
-.buy-plan-ai-btn{
-  min-height:34px;
-  padding:0 11px;
-  border-radius:13px;
-  border:1px solid rgba(54,211,153,.24);
-  background:rgba(54,211,153,.09);
-  color:#c8f7df;
-  font-size:12px;
-  font-weight:1000;
+.monthly-budget-cancel{
+  background:rgba(255,255,255,.06);
 }
-.buy-plan-sub b{
-  color:#c8f7df;
-}
-@media(max-width:560px){
-  .monthly-add-panel{
-    grid-template-columns:1fr;
-  }
+.monthly-budget-apply{
+  background:linear-gradient(135deg,#5d7cff,#7b8dff);
+  box-shadow:0 14px 28px rgba(91,124,255,.28);
 }
 
 </style>
@@ -4360,20 +4412,13 @@ button.tap-feedback-active,
 <div class="monthly-plan-head">
 <div>
 <div class="monthly-plan-title">월 매수 계획</div>
-<div class="monthly-plan-note">종목별 월 매수금액을 직접 수정할 수 있습니다</div>
+<div class="monthly-plan-note">월 투자금액 기준으로 AI가 전체 매수계획을 자동 배분하고, 종목별 금액은 직접 수정할 수 있습니다</div>
 </div>
 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end">
-<button class="monthly-reset-btn" id="btnMonthlyAi" type="button">AI 금액 추천</button>
-<button class="monthly-reset-btn" id="btnMonthlyAdd" type="button">종목 추가</button>
+<button class="monthly-reset-btn" id="btnMonthlyAiApply" type="button">AI 전체 적용</button>
 <button class="monthly-reset-btn" id="btnMonthlyReset" type="button">체크 초기화</button>
 <div class="monthly-plan-total" id="buyPlanTotal">0원</div>
 </div>
-</div>
-<div class="monthly-add-panel" id="monthlyAddPanel" style="display:none">
-  <select class="monthly-add-select" id="monthlyAddSelect"></select>
-  <input class="monthly-edit-input" id="monthlyAddAmount" inputmode="numeric" placeholder="월 금액">
-  <button class="buy-plan-save-btn" id="btnMonthlyAddSave" type="button">추가</button>
-  <button class="buy-plan-cancel-btn" id="btnMonthlyAddCancel" type="button">취소</button>
 </div>
 <div class="buy-plan-list" id="buyPlanList"></div><div class="monthly-plan-helper">수정 후 0원으로 저장하면 월 매수계획에서 제외됩니다.</div>
 </div>
@@ -4728,7 +4773,7 @@ button.tap-feedback-active,
 <div class="toast" id="toast"></div>
 <script>
 (() => {
-  const KEY = 'portfolio_vercel_v112';
+  const KEY = 'portfolio_vercel_v114';
   const colors = ['#4d7cff','#8d7dff','#22c55e','#f3b13f','#ff5c73','#38bdf8','#ec4899','#84cc16','#64748b','#f97316','#06b6d4'];
   const defaults = [
     {id:'datacenter',group:'국내 ETF',market:'kr',name:'TIGER 미국AI데이터센터TOP4Plus',short:'데이터센터',code:'0142D0',qty:222,avg:8531,price:14480,monthly:100000,buyText:'13,500원 이하 분할매수 / 12,000원 이하 적극매수',rule:p=>p<=12000?['적극매수','buy','12,000원 이하 적극매수 구간 단, 과집중은 피하기']:p<=13500?['분할매수','buy','13,500원 이하 분할매수 가능 구간']:['보유','hold','수익권 유지 급하게 추격매수하지 않기']},
@@ -5282,6 +5327,120 @@ button.tap-feedback-active,
     return Math.max(0, Number(raw) || 0);
   }
 
+  const MONTHLY_AI_BUDGET_KEY_V114 = 'portfolio_monthly_ai_budget_v114';
+
+  function getMonthlyBudgetV114(){
+    const saved = Number(localStorage.getItem(MONTHLY_AI_BUDGET_KEY_V114) || 0);
+    if(saved > 0) return saved;
+    const current = items.reduce((a,x) => a + Number(x.monthly || 0), 0);
+    return current > 0 ? current : 1500000;
+  }
+
+  function getMonthlyTargetWeightV114(item, budget){
+    const targetMap = typeof rebalanceTargets !== 'undefined' && rebalanceTargets.stock ? rebalanceTargets.stock : {};
+    if(targetMap[item.name] !== undefined) return targetMap[item.name];
+
+    if(item.group && /ETF/.test(item.group)) return 12;
+    if(item.status === 'buy') return 8;
+    if(item.status === 'hold') return 6;
+    if(item.status === 'watch') return 4;
+    return 5;
+  }
+
+  function distributeMonthlyBudgetV114(budget){
+    const activeItems = items.filter(x => x.status !== 'reduce' && x.status !== 'warn');
+    if(!activeItems.length) return [];
+
+    const totalValue = items.reduce((a,x) => a + (x.value || 0), 0);
+    const scored = activeItems.map(x => {
+      const currentWeight = totalValue ? (x.value || 0) / totalValue * 100 : 0;
+      const targetWeight = getMonthlyTargetWeightV114(x, budget);
+      const underWeight = Math.max(0, targetWeight - currentWeight);
+      let score = underWeight;
+
+      if(x.status === 'buy') score += 3;
+      if(x.status === 'hold') score += 1.5;
+      if(x.group && /ETF/.test(x.group)) score += 1.2;
+      if(score <= 0) score = 0.8;
+
+      return { item:x, score };
+    });
+
+    const totalScore = scored.reduce((a,x) => a + x.score, 0) || 1;
+    let rows = scored.map(x => ({
+      item:x.item,
+      amount:Math.round((budget * x.score / totalScore) / 10000) * 10000
+    }));
+
+    let diff = budget - rows.reduce((a,x) => a + x.amount, 0);
+    rows.sort((a,b) => b.amount - a.amount);
+
+    let guard = 0;
+    while(Math.abs(diff) >= 10000 && rows.length && guard < 1000){
+      for(const row of rows){
+        if(Math.abs(diff) < 10000) break;
+        if(diff > 0){
+          row.amount += 10000;
+          diff -= 10000;
+        }else if(row.amount >= 10000){
+          row.amount -= 10000;
+          diff += 10000;
+        }
+      }
+      guard++;
+    }
+
+    return rows.filter(x => x.amount > 0);
+  }
+
+  function openMonthlyBudgetSheetV114(){
+    const sheet = document.getElementById('monthlyBudgetSheet');
+    const bg = document.getElementById('monthlyBudgetBackdrop');
+    const input = document.getElementById('monthlyBudgetInput');
+    if(!sheet || !bg || !input) return;
+
+    input.value = getMonthlyBudgetV114().toLocaleString('ko-KR');
+    bg.classList.add('active');
+    sheet.classList.add('active');
+
+    setTimeout(() => {
+      input.focus();
+      input.select();
+    }, 120);
+  }
+
+  function closeMonthlyBudgetSheetV114(){
+    document.getElementById('monthlyBudgetSheet')?.classList.remove('active');
+    document.getElementById('monthlyBudgetBackdrop')?.classList.remove('active');
+  }
+
+  function applyMonthlyBudgetV114(){
+    const input = document.getElementById('monthlyBudgetInput');
+    const budget = parseWonInputV111(input && input.value);
+    if(budget <= 0){
+      toast('월 총 투자금액을 입력해주세요');
+      return;
+    }
+
+    localStorage.setItem(MONTHLY_AI_BUDGET_KEY_V114, String(budget));
+
+    const rows = distributeMonthlyBudgetV114(budget);
+    const rowMap = new Map(rows.map(r => [r.item.id, r.amount]));
+
+    items.forEach(item => {
+      const amount = rowMap.get(item.id) || 0;
+      item.monthly = amount;
+      if(amount <= 0) setMonthlyDone(item.id, false);
+    });
+
+    persist();
+    closeMonthlyBudgetSheetV114();
+    recalc();
+
+    const total = rows.reduce((a,x) => a + x.amount, 0);
+    toast(`월 매수계획 ${won(total)} 반영 완료`);
+  }
+
   function startMonthlyEditV111(id){
     monthlyEditingIdV111 = id;
     renderMonthlyPlan();
@@ -5306,160 +5465,10 @@ button.tap-feedback-active,
     const amount = parseWonInputV111(input.value);
     item.monthly = amount;
     monthlyEditingIdV111 = null;
-    setMonthlyExcludeV112(id, amount <= 0);
     if(amount <= 0) setMonthlyDone(id, false);
     persist();
     recalc();
     toast(amount > 0 ? `${item.name} 월 매수금액 ${won(amount)} 저장` : `${item.name} 월 매수계획 제외`);
-  }
-
-
-
-
-  const MONTHLY_EXCLUDE_KEY_V112 = 'portfolio_monthly_exclude_v112';
-  function getMonthlyExcludeV112(){
-    try{return JSON.parse(localStorage.getItem(MONTHLY_EXCLUDE_KEY_V112) || '{}') || {};}catch(e){return {};}
-  }
-  function setMonthlyExcludeV112(id, excluded){
-    const m = getMonthlyExcludeV112();
-    if(excluded) m[id] = true;
-    else delete m[id];
-    localStorage.setItem(MONTHLY_EXCLUDE_KEY_V112, JSON.stringify(m));
-  }
-
-  const MONTHLY_AI_BUDGET_KEY_V112 = 'portfolio_monthly_ai_budget_v112';
-
-  function getMonthlyBudgetV112(){
-    const saved = Number(localStorage.getItem(MONTHLY_AI_BUDGET_KEY_V112) || 0);
-    if(saved > 0) return saved;
-    const current = items.reduce((a,x) => a + (Number(x.monthly || 0)), 0);
-    return current > 0 ? current : 1000000;
-  }
-
-  function getMonthlyPlanCandidatesV112(){
-    return items
-      .map(x => {
-        const totalValue = items.reduce((a,i)=>a+(i.value||0),0);
-        const current = totalValue ? (x.value || 0) / totalValue * 100 : 0;
-        const targetMap = rebalanceTargets.stock || {};
-        const target = targetMap[x.name] ?? Math.max(2, Math.min(12, Number(x.monthly || 0) / Math.max(1, getMonthlyBudgetV112()) * 100 || 5));
-        const diff = target - current;
-        return {...x, currentWeight:current, targetWeight:target, underWeight:diff};
-      })
-      .sort((a,b) => b.underWeight - a.underWeight || (b.monthly || 0) - (a.monthly || 0));
-  }
-
-  function getAiMonthlyAmountV112(item, budget){
-    const candidates = getMonthlyPlanCandidatesV112().filter(x => x.underWeight > 0);
-    const totalNeed = candidates.reduce((a,x)=>a+Math.max(0,x.underWeight),0);
-    const found = candidates.find(x => x.id === item.id);
-    let amount = 0;
-
-    if(found && totalNeed > 0){
-      amount = budget * (Math.max(0, found.underWeight) / totalNeed);
-    }else if(item.status === 'buy'){
-      amount = budget * 0.12;
-    }else if(item.status === 'hold'){
-      amount = budget * 0.08;
-    }else{
-      amount = budget * 0.05;
-    }
-
-    if(item.status === 'reduce' || item.status === 'warn') amount = 0;
-    amount = Math.round(amount / 10000) * 10000;
-    return Math.max(0, amount);
-  }
-
-  function applyAiMonthlyPlanV112(){
-    const budgetText = prompt('월 총 투자금액을 입력하세요', String(getMonthlyBudgetV112()).replace(/\B(?=(\d{3})+(?!\d))/g, ','));
-    if(budgetText === null) return;
-    const budget = parseWonInputV111(budgetText);
-    if(budget <= 0){
-      toast('월 투자금액을 다시 입력해주세요');
-      return;
-    }
-    localStorage.setItem(MONTHLY_AI_BUDGET_KEY_V112, String(budget));
-
-    let count = 0;
-    items.forEach(item => {
-      const amount = getAiMonthlyAmountV112(item, budget);
-      item.monthly = amount;
-      setMonthlyExcludeV112(item.id, amount <= 0);
-      if(amount > 0) count += 1;
-      else setMonthlyDone(item.id, false);
-    });
-
-    persist();
-    recalc();
-    toast(`AI 월 매수계획 ${count}개 반영 완료`);
-  }
-
-  function openMonthlyAddPanelV112(){
-    const panel = document.getElementById('monthlyAddPanel');
-    const select = document.getElementById('monthlyAddSelect');
-    const amount = document.getElementById('monthlyAddAmount');
-    if(!panel || !select || !amount) return;
-
-    const candidates = items.filter(x => !(x.monthly > 0));
-    if(!candidates.length){
-      toast('추가할 수 있는 종목이 없습니다');
-      return;
-    }
-
-    select.innerHTML = candidates.map(x => `<option value="${x.id}">${x.name} · ${x.group}</option>`).join('');
-    const first = candidates[0];
-    amount.value = getAiMonthlyAmountV112(first, getMonthlyBudgetV112()).toLocaleString('ko-KR');
-    select.onchange = () => {
-      const item = items.find(x => x.id === select.value);
-      amount.value = item ? getAiMonthlyAmountV112(item, getMonthlyBudgetV112()).toLocaleString('ko-KR') : '';
-    };
-    panel.style.display = 'grid';
-  }
-
-  function closeMonthlyAddPanelV112(){
-    const panel = document.getElementById('monthlyAddPanel');
-    if(panel) panel.style.display = 'none';
-  }
-
-  function saveMonthlyAddV112(){
-    const select = document.getElementById('monthlyAddSelect');
-    const amountInput = document.getElementById('monthlyAddAmount');
-    const item = items.find(x => x.id === (select && select.value));
-    if(!item || !amountInput) return;
-    const amount = parseWonInputV111(amountInput.value);
-    if(amount <= 0){
-      toast('월 매수금액을 입력해주세요');
-      return;
-    }
-    item.monthly = amount;
-    setMonthlyExcludeV112(item.id, false);
-    persist();
-    closeMonthlyAddPanelV112();
-    recalc();
-    toast(`${item.name} 월 매수계획 추가 완료`);
-  }
-
-  function removeMonthlyPlanV112(id){
-    const item = items.find(x => x.id === id);
-    if(!item) return;
-    item.monthly = 0;
-    setMonthlyExcludeV112(id, true);
-    setMonthlyDone(id, false);
-    persist();
-    recalc();
-    toast(`${item.name} 월 매수계획에서 삭제`);
-  }
-
-  function applySingleAiMonthlyAmountV112(id){
-    const item = items.find(x => x.id === id);
-    if(!item) return;
-    const amount = getAiMonthlyAmountV112(item, getMonthlyBudgetV112());
-    item.monthly = amount;
-    setMonthlyExcludeV112(id, amount <= 0);
-    if(amount <= 0) setMonthlyDone(id, false);
-    persist();
-    recalc();
-    toast(`${item.name} AI 추천금액 ${won(amount)} 반영`);
   }
 
 
@@ -5484,19 +5493,7 @@ function getMonthlyDone(){
     const totalEl = document.getElementById('buyPlanTotal');
     if(!list || !totalEl) return;
     const done = getMonthlyDone();
-    const excluded = getMonthlyExcludeV112();
-    let changedMonthlyAuto = false;
-    items.forEach(x => {
-      if(!excluded[x.id] && !(x.monthly > 0)){
-        const aiAmount = getAiMonthlyAmountV112(x, getMonthlyBudgetV112());
-        if(aiAmount > 0){
-          x.monthly = aiAmount;
-          changedMonthlyAuto = true;
-        }
-      }
-    });
-    if(changedMonthlyAuto) persist();
-    const plans = items.filter(x => !excluded[x.id] && (x.monthly || 0) > 0).sort((a,b) => b.monthly - a.monthly);
+    const plans = items.filter(x => (x.monthly || 0) > 0).sort((a,b) => b.monthly - a.monthly);
     const total = plans.reduce((a,x) => a + (x.monthly || 0), 0);
     const doneTotal = plans.filter(x => done[x.id]).reduce((a,x) => a + (x.monthly || 0), 0);
     totalEl.textContent = `${won(doneTotal)} / ${won(total)}`;
@@ -5513,7 +5510,7 @@ function getMonthlyDone(){
           <input class="buy-check" type="checkbox" data-plan-check="${x.id}" ${checked ? 'checked' : ''} aria-label="${x.name} 매수 완료">
           <div>
             <div class="buy-plan-name">${x.name}</div>
-            <div class="buy-plan-sub">${x.group} · 월 비중 ${pct(share)} · <b>AI참고 ${won(getAiMonthlyAmountV112(x, getMonthlyBudgetV112()))}</b></div>
+            <div class="buy-plan-sub">${x.group} · 월 비중 ${pct(share)}</div>
             ${checked ? '<div class="buy-plan-done-label">체크됨</div>' : ''}
           </div>
           <div class="buy-plan-actions">
@@ -5522,7 +5519,7 @@ function getMonthlyDone(){
               <input class="monthly-edit-input" data-monthly-edit-input="${x.id}" inputmode="numeric" value="${Math.round(x.monthly || 0).toLocaleString('ko-KR')}" aria-label="${x.name} 월 매수금액">
               <button class="buy-plan-save-btn" data-monthly-save="${x.id}" type="button">저장</button>
               <button class="buy-plan-cancel-btn" data-monthly-cancel type="button">취소</button>
-            ` : `<button class="buy-plan-ai-btn" data-monthly-ai-one="${x.id}" type="button">AI</button><button class="buy-plan-edit-btn" data-monthly-edit="${x.id}" type="button">수정</button><button class="buy-plan-delete-btn" data-monthly-delete="${x.id}" type="button">삭제</button>`}
+            ` : `<button class="buy-plan-edit-btn" data-monthly-edit="${x.id}" type="button">수정</button>`}
           </div>
         </div>
         <div class="buy-plan-bar"><span style="width:${Math.max(3, share).toFixed(2)}%"></span></div>
@@ -5557,22 +5554,6 @@ function getMonthlyDone(){
         cancelMonthlyEditV111();
       });
     });
-
-
-    list.querySelectorAll('[data-monthly-delete]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        removeMonthlyPlanV112(btn.getAttribute('data-monthly-delete'));
-      });
-    });
-
-    list.querySelectorAll('[data-monthly-ai-one]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        applySingleAiMonthlyAmountV112(btn.getAttribute('data-monthly-ai-one'));
-      });
-    });
-
 
     list.querySelectorAll('[data-monthly-edit-input]').forEach(input => {
       input.addEventListener('keydown', e => {
@@ -8256,10 +8237,18 @@ function getMonthlyDone(){
   el('btnRefreshTop').addEventListener('click', refreshPrices);
   el('btnRefreshMain').addEventListener('click', refreshPrices);
   el('btnMonthlyReset').addEventListener('click', resetMonthlyDone);
-  el('btnMonthlyAi').addEventListener('click', applyAiMonthlyPlanV112);
-  el('btnMonthlyAdd').addEventListener('click', openMonthlyAddPanelV112);
-  el('btnMonthlyAddSave').addEventListener('click', saveMonthlyAddV112);
-  el('btnMonthlyAddCancel').addEventListener('click', closeMonthlyAddPanelV112);
+  el('btnMonthlyAiApply').addEventListener('click', openMonthlyBudgetSheetV114);
+  el('btnMonthlyBudgetApply').addEventListener('click', applyMonthlyBudgetV114);
+  el('btnMonthlyBudgetCancel').addEventListener('click', closeMonthlyBudgetSheetV114);
+  el('monthlyBudgetBackdrop').addEventListener('click', closeMonthlyBudgetSheetV114);
+  el('monthlyBudgetInput').addEventListener('input', e => {
+    const n = parseWonInputV111(e.target.value);
+    e.target.value = n ? n.toLocaleString('ko-KR') : '';
+  });
+  el('monthlyBudgetInput').addEventListener('keydown', e => {
+    if(e.key === 'Enter') applyMonthlyBudgetV114();
+    if(e.key === 'Escape') closeMonthlyBudgetSheetV114();
+  });
   el('btnCaptureTop').addEventListener('click', () => el('tradeCaptureInput').click());
   el('btnCaptureMain').addEventListener('click', () => el('tradeCaptureInput').click());
   el('tradeCaptureInput').addEventListener('change', e => applyTradeCapture(e.target.files && e.target.files[0]));
@@ -9510,6 +9499,20 @@ window.STOCK_CODEBOOK_FALLBACK_V92 = [{"market": "kr", "code": "005930", "name":
   <div class="refresh-sheet-actions">
     <button class="refresh-action ghost" id="btnRefreshSheetClose2" type="button">닫기</button>
     <button class="refresh-action primary" id="btnRefreshShowStrong" type="button">추천 보기</button>
+  </div>
+</div>
+
+
+<div class="monthly-budget-backdrop" id="monthlyBudgetBackdrop"></div>
+<div class="monthly-budget-sheet" id="monthlyBudgetSheet">
+  <div class="monthly-budget-handle"></div>
+  <div class="monthly-budget-title">월 투자금액 설정</div>
+  <div class="monthly-budget-sub">입력한 금액을 기준으로 AI가 리밸런싱을 참고해 전체 월 매수계획을 자동 배분합니다.</div>
+  <label class="monthly-budget-label" for="monthlyBudgetInput">월 총 투자금액</label>
+  <input class="monthly-budget-input" id="monthlyBudgetInput" inputmode="numeric" placeholder="예: 1,500,000">
+  <div class="monthly-budget-actions">
+    <button class="monthly-budget-cancel" id="btnMonthlyBudgetCancel" type="button">취소</button>
+    <button class="monthly-budget-apply" id="btnMonthlyBudgetApply" type="button">AI 전체 적용</button>
   </div>
 </div>
 
